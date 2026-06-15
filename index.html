@@ -252,6 +252,8 @@
         const SUPABASE_URL = "https://gnqptfyzgfzlgzdspacv.supabase.co"; 
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImducXB0Znl6Z2Z6bGd6ZHNwYWN2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1MjM5OTAsImV4cCI6MjA5NzA5OTk5MH0.uz6c6mSYRdSb2SYSOQT4fY0tsIpi0N6ojsUui-6UpXs";
         const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        // วางต่อท้ายบรรทัด const supabase = supabase.createClient(...);
+supabase.options.db = { schema: 'public' };
 
         let porkPrices = JSON.parse(localStorage.getItem('pork_prices_v5')) || [
             { id: "1", name: "หมูเนื้อแดง", price: 140 },
