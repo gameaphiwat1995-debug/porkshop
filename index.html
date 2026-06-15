@@ -248,11 +248,12 @@
     </div>
 
     <script>
-        // 🛠️ วางคีย์เวิร์ดล็อกอินฐานข้อมูลออนไลน์ Supabase ตรงกล่องด้านล่างนี้
+        // เรียกใช้ฟังก์ชันเปิดระบบคลาวด์แบบถูกต้องตามมาตรฐาน Supabase v2
         const SUPABASE_URL = "https://gnqptfyzgfzlgzdspacv.supabase.co"; 
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImducXB0Znl6Z2Z6bGd6ZHNwYWN2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1MjM5OTAsImV4cCI6MjA5NzA5OTk5MH0.uz6c6mSYRdSb2SYSOQT4fY0tsIpi0N6ojsUui-6UpXs";
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        supabase.options.db = { schema: 'public' };
+        
+        // แก้ไขบรรทัดเจ้าปัญหาให้เรียกผ่าน supabasejs แทนตัวแปรซ้ำซ้อน
+        const supabase = supabasejs.createClient(SUPABASE_URL, SUPABASE_KEY, { db: { schema: 'public' } });
 
         let porkPrices = JSON.parse(localStorage.getItem('pork_prices_v5')) || [
             { id: "1", name: "หมูเนื้อแดง", price: 140 },
@@ -363,12 +364,10 @@
             element.style.display = (element.style.display === "block") ? "none" : "block";
         }
 
-        // 📥 ฟังก์ชันซิงค์โหลดข้อมูลแบบเรียลไทม์จากเซิร์ฟเวอร์อินเทอร์เน็ต
         async function init() {
             localStorage.setItem('pork_prices_v5', JSON.stringify(porkPrices));
             localStorage.setItem('pork_vips_v5', JSON.stringify(vipCustomers));
 
-            // ตั้งค่าเริ่มต้นของวันที่หากหน้าเว็บเปิดครั้งแรกและไม่มีวันที่เลือก
             let dateInput = document.getElementById('globalDateInput');
             if (!dateInput.value) {
                 let today = new Date();
@@ -389,11 +388,10 @@
             `).join('');
 
             try {
-                // ดึงบิลออนไลน์จากระบบคลาวด์
+                // ดึงข้อมูลออนไลน์จากระบบคลาวด์จริง
                 const { data: dbBills, error: bErr } = await supabase.from('bills').select('*');
                 if (!bErr) bills = dbBills || [];
 
-                // ดึงรายจ่ายออนไลน์จากระบบคลาวด์
                 const { data: dbExpenses, error: eErr } = await supabase.from('expenses').select('*');
                 if (!eErr) expenses = dbExpenses || [];
             } catch(err) {
@@ -503,7 +501,6 @@
             init();
         }
 
-        // ☁️ ฟังก์ชัน: เซฟบิลใหม่ หรือ แก้ไขบิลเก่าตรงเข้าคลาวด์ออนไลน์
         document.getElementById('billForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const editId = document.getElementById('editBillId').value;
@@ -521,10 +518,8 @@
             const billData = { customer: finalCustomerName, items: currentBasket, total: billTotal, isDebt: isDebt, date: targetDate };
 
             if (editId) {
-                // อัปเดตออนไลน์แทนที่เดิม
                 await supabase.from('bills').update(billData).eq('id', editId);
             } else {
-                // บันทึกบิลใบใหม่ส่งขึ้นระบบ
                 await supabase.from('bills').insert([billData]);
             }
             resetPosForm();
@@ -559,7 +554,6 @@
             }
         }
 
-        // ☁️ ฟังก์ชัน: บันทึกรายจ่ายส่งตรงขึ้นคลาวด์ออนไลน์
         document.getElementById('expenseForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const targetDate = document.getElementById('globalDateInput').value;
