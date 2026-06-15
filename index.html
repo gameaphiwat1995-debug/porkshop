@@ -252,8 +252,7 @@
         const SUPABASE_URL = "https://gnqptfyzgfzlgzdspacv.supabase.co"; 
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImducXB0Znl6Z2Z6bGd6ZHNwYWN2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1MjM5OTAsImV4cCI6MjA5NzA5OTk5MH0.uz6c6mSYRdSb2SYSOQT4fY0tsIpi0N6ojsUui-6UpXs";
         const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        // วางต่อท้ายบรรทัด const supabase = supabase.createClient(...);
-supabase.options.db = { schema: 'public' };
+        supabase.options.db = { schema: 'public' };
 
         let porkPrices = JSON.parse(localStorage.getItem('pork_prices_v5')) || [
             { id: "1", name: "หมูเนื้อแดง", price: 140 },
@@ -369,7 +368,17 @@ supabase.options.db = { schema: 'public' };
             localStorage.setItem('pork_prices_v5', JSON.stringify(porkPrices));
             localStorage.setItem('pork_vips_v5', JSON.stringify(vipCustomers));
 
-            const selectedDate = document.getElementById('globalDateInput').value;
+            // ตั้งค่าเริ่มต้นของวันที่หากหน้าเว็บเปิดครั้งแรกและไม่มีวันที่เลือก
+            let dateInput = document.getElementById('globalDateInput');
+            if (!dateInput.value) {
+                let today = new Date();
+                let year = today.getFullYear();
+                let month = String(today.getMonth() + 1).padStart(2, '0');
+                let day = String(today.getDate()).padStart(2, '0');
+                dateInput.value = `${year}-${month}-${day}`;
+            }
+            const selectedDate = dateInput.value;
+            
             document.getElementById('billPorkType').innerHTML = porkPrices.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
 
             document.getElementById('vipPriceInputsContainer').innerHTML = porkPrices.map(p => `
@@ -489,7 +498,6 @@ supabase.options.db = { schema: 'public' };
             document.getElementById('billForm').reset();
             document.getElementById('customerSearchInput').value = "";
             filterCustomerSearch();
-            document.getElementById('formTitle').innerText = "🛒 ออกบิลขายหมูใบใหม่";
             document.getElementById('submitBillBtn').innerText = "💾 บันทึกเปิดบิลขึ้นเซิร์ฟเวอร์";
             document.getElementById('cancelEditBtn').style.display = "none";
             init();
@@ -545,7 +553,6 @@ supabase.options.db = { schema: 'public' };
                 else document.getElementById('pay-paid').checked = true;
 
                 currentBasket = JSON.parse(JSON.stringify(bill.items));
-                document.getElementById('formTitle').innerText = "⚠️ กำลังแก้ไขบิลของ: " + bill.customer;
                 document.getElementById('submitBillBtn').innerText = "🔄 บันทึกการเปลี่ยนแปลงบิล";
                 document.getElementById('cancelEditBtn').style.display = "block";
                 renderBasket();
