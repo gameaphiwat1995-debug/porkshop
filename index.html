@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PorkShop Online - ระบบบัญชีร้านหมูสดเจ๊สุ</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <style>
+        :root {
+            --primary: #ff4757;
+            --primary-dark: #e84118;
+            --success: #2ed573;
+            --warning: #ffa502;
+            --danger: #ff4757;
+            --dark: #2f3542;
+            --light: #f1f2f6;
+            --info: #2196f3;
+            --purple: #9c27b0;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f5f6fa; color: var(--dark); padding-bottom: 70px; }
+
+        /* App Header */
+        .header { background: linear-gradient(135deg, #ff6b81, var(--primary)); color: white; padding: 20px; text-align: center; border-bottom-left-radius: 20px; border-bottom-right-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .header h1 { font-size: 22px; }
+        .header p { font-size: 13px; opacity: 0.9; margin-top: 5px; }
+
+        /* Main Container */
+        .app-container { padding: 15px; max-width: 500px; margin: 0 auto; }
+        .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 15px; }
+        .card h3 { margin-bottom: 12px; color: var(--dark); border-left: 4px solid var(--primary); padding-left: 8px; font-size: 16px; }
+
+        /* Form Controls */
+        .form-group { margin-bottom: 12px; }
+        .form-group label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px; color: #57606f; }
+        .form-control { width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 15px; outline: none; }
+        .form-control:focus { border-color: var(--primary); }
+        .row { display: flex; gap: 10px; }
+        .col { flex: 1; }
+
+        .date-input { background: #edf2f7; font-weight: bold; text-align: center; color: var(--dark); }
+
+        /* Buttons */
+        .btn { width: 100%; padding: 12px; border: none; border-radius: 8px; font-weight: bold; font-size: 15px; cursor: pointer; transition: 0.2s; text-align: center; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-orange { background: var(--warning); color: white; }
+        .btn-info { background: var(--info); color: white; padding: 10px; font-size: 14px; }
+        .btn-purple { background: var(--purple); color: white; }
+        
+        /* Action Buttons */
+        .btn-action-edit { background-color: #ffca28; color: #333; border: none; padding: 5px 10px; font-size: 12px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-right: 5px; }
+        .btn-action-delete { background-color: #ef4444; color: white; border: none; padding: 5px 10px; font-size: 12px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-clear-all { background-color: var(--success); color: white; border: none; padding: 6px 10px; font-size: 12px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+
+        /* Toggle Groups */
+        .toggle-group { display: flex; gap: 10px; margin-top: 5px; margin-bottom: 15px; }
+        .toggle-btn { flex: 1; text-align: center; padding: 12px; border-radius: 8px; font-weight: bold; border: 2px solid #ddd; cursor: pointer; font-size: 14px; }
+        input[type="radio"] { display: none; }
+        #pay-paid:checked + .label-paid { border-color: var(--success); background-color: #e8fced; color: #1e7e34; }
+        #pay-debt:checked + .label-debt { border-color: var(--warning); background-color: #fff9db; color: #d39e00; }
+
+        /* Navigation Bottom Bar */
+        .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: white; display: flex; justify-content: space-around; padding: 10px 0; border-top: 1px solid #ddd; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); z-index: 100; }
+        .nav-item { border: none; background: none; color: #a4b0be; font-size: 11px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        .nav-item.active { color: var(--primary); font-weight: bold; }
+        .nav-item span { font-size: 18px; }
+
+        /* Lists Setup */
+        .item-list { list-style: none; }
+        .item-list li { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #eee; font-size: 14px; }
+        .badge { padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: bold; color: white; display: inline-block; }
+        .badge-paid { background: var(--success); }
+        .badge-debt { background: var(--warning); }
+
+        /* Dashboard Overview */
+        .dash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        .dash-box { padding: 12px; border-radius: 10px; color: white; text-align: center; }
+        .bg-income { background: #2ed573; }
+        .bg-expense { background: #ff4757; }
+
+        .app-section { display: none; }
+        .app-section.active { display: block; }
+
+        .edit-row-box { background: #f8fafc; border: 1px solid #cbd5e1; padding: 8px; border-radius: 6px; margin-top: 4px; font-size: 12px; }
+        
+        /* Debt Detail Sub-list */
+        .debt-detail-box { background: #f8fafc; border-left: 3px solid var(--warning); padding: 8px; margin-top: 5px; width: 100%; border-radius: 0 6px 6px 0; display: none; }
+        .debt-detail-item { font-size: 12px; padding: 4px 0; border-bottom: 1px dotted #e2e8f0; color: #4a5568; }
+        
+        .loading-text { text-align: center; color: #888; font-size: 13px; padding: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>ระบบร้านหมูสดเจ๊สุ</h1>
+        <p>ระบบออนไลน์ ซิงค์ข้อมูลเรียลไทม์แชร์กันดูได้ 4 คน</p>
+    </div>
+
+    <div class="app-container">
+
+        <div id="sec-pos" class="app-section active">
+            
+            <div class="form-group" style="background:#fff; padding:10px; border-radius:12px; box-shadow:0 2px 5px rgba(0,0,0,0.05);">
+                <label style="text-align: center; display: block; font-size: 14px; margin-bottom:4px;">📅 เลือกวันที่สำหรับบิล/รายจ่ายนี้:</label>
+                <input type="date" id="globalDateInput" class="form-control date-input" onchange="init()">
+            </div>
+
+            <div class="dash-grid">
+                <div class="dash-box bg-income"><small>รายรับเงินสด (วันที่เลือก)</small><h3 id="dash-income">กำลังโหลด...</h3></div>
+                <div class="dash-box bg-expense"><small>รายจ่าย (วันที่เลือก)</small><h3 id="dash-expense">กำลังโหลด...</h3></div>
+            </div>
+
+            <div class="card">
+                <h3>1. ข้อมูลลูกค้า</h3>
+                <div class="form-group">
+                    <label>พิมพ์ค้นหาชื่อลูกค้าประจำ (หากเป็นลูกค้าจรให้ปล่อยว่างไว้)</label>
+                    <input type="text" id="customerSearchInput" class="form-control" placeholder="🔍 เริ่มพิมพ์ชื่อเพื่อค้นหา..." oninput="filterCustomerSearch()">
+                    
+                    <select id="billCustomerSelect" class="form-control" style="margin-top:8px;" onchange="onCustomerSelectChange()">
+                        <option value="normal">👤 ลูกค้าทั่วไป (ราคากลางปกติ)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>2. เลือกชิ้นส่วนหมูลงตะกร้า</h3>
+                <div style="background: #f1f5f9; padding: 12px; border-radius: 8px; margin-bottom: 15px;">
+                    <div class="row">
+                        <div class="col form-group">
+                            <label>เลือกหมู</label>
+                            <select id="billPorkType" class="form-control" onchange="onPorkTypeSelectChange()"></select>
+                        </div>
+                        <div class="col form-group">
+                            <label>ราคาขาย (บาท/กก.)</label>
+                            <input type="number" id="billCustomPrice" class="form-control" placeholder="ราคา" step="0.1">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col form-group">
+                            <label>น้ำหนักชั่งจริง (กก.)</label>
+                            <input type="number" id="billWeight" class="form-control" step="0.01" placeholder="0.00">
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-info" onclick="addToBasket()">➕ เพิ่มรายการลงบิล</button>
+                </div>
+
+                <div style="background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px dashed #cbd5e1; margin-bottom: 15px;">
+                    <ul id="basketList" class="item-list"></ul>
+                    <h4 style="color: var(--primary); margin-top: 10px; text-align: right;">รวมยอดบิลนี้: <span id="billTotalText">0</span> บาท</h4>
+                </div>
+
+                <form id="billForm">
+                    <input type="hidden" id="editBillId" value="">
+                    
+                    <div class="form-group" id="manualNameContainer">
+                        <label>ระบุชื่อลูกค้าจร / รายการทั่วไป</label>
+                        <input type="text" id="billCustomerManualName" class="form-control" placeholder="ระบุชื่อลูกค้า...">
+                    </div>
+
+                    <div class="form-group">
+                        <label>สถานะเงินสด/ค้างจ่าย</label>
+                        <div class="toggle-group">
+                            <input type="radio" name="payStatus" id="pay-paid" value="paid" checked>
+                            <label for="pay-paid" class="toggle-btn label-paid">🟢 ชำระเงินแล้ว</label>
+
+                            <input type="radio" name="payStatus" id="pay-debt" value="debt">
+                            <label for="pay-debt" class="toggle-btn label-debt">🟡 ค้างจ่าย (ติดหนี้)</label>
+                        </div>
+                    </div>
+                    <button type="submit" id="submitBillBtn" class="btn btn-primary">💾 บันทึกเปิดบิลขึ้นเซิร์ฟเวอร์</button>
+                    <button type="button" id="cancelEditBtn" class="btn btn-orange" style="margin-top:10px; display:none;" onclick="resetPosForm()">❌ ยกเลิกการแก้ไข</button>
+                </form>
+            </div>
+        </div>
+
+        <div id="sec-vip" class="app-section">
+            <div class="card">
+                <h3>⭐ เพิ่มชื่อลูกค้าประจำและตั้งราคาส่วนตัว</h3>
+                <form id="vipCustomerForm">
+                    <div class="form-group">
+                        <label>ชื่อ-นามสกุล ลูกค้าประจำ</label>
+                        <input type="text" id="vipCustName" class="form-control" placeholder="เช่น เจ๊พรอร่อยดี" required>
+                    </div>
+                    
+                    <div style="background: #f8fafc; padding: 10px; border-radius: 8px; margin-bottom: 10px;">
+                        <label style="font-size:12px; color:#4a5568;">💰 กำหนดราคาหมูเฉพาะของลูกค้าคนนี้ (บาท/กก.)</label>
+                        <div id="vipPriceInputsContainer"></div>
+                    </div>
+                    <button type="submit" class="btn btn-purple">💾 บันทึกรายชื่อลูกค้าประจำ</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h3>👥 รายชื่อลูกค้าประจำในระบบ</h3>
+                <ul id="vipCustomerList" class="item-list"></ul>
+            </div>
+        </div>
+
+        <div id="sec-debts" class="app-section">
+            <div class="card">
+                <h3>👥 สมุดรายชื่อคนติดหนี้สะสมรวม (ออนไลน์)</h3>
+                <p style="font-size: 12px; color: #718096; margin-bottom: 10px;">💡 จิ้มที่ชื่อลูกค้าเพื่อดูรายละเอียดสิ่งของที่ค้างไว้แยกแต่ละบิลได้</p>
+                <ul id="debtLedgerList" class="item-list"><div class="loading-text">กำลังโหลด...</div></ul>
+            </div>
+        </div>
+
+        <div id="sec-reports" class="app-section">
+            <div class="card">
+                <h3>💸 บันทึกรายจ่ายประจำวัน</h3>
+                <form id="expenseForm">
+                    <div class="row">
+                        <div class="col"><input type="text" id="expName" class="form-control" placeholder="รายการจ่าย" required></div>
+                        <div class="col"><input type="number" id="expAmount" class="form-control" placeholder="บาท" required></div>
+                    </div>
+                    <button type="submit" class="btn btn-orange" style="margin-top:8px;">+ ลงรายจ่าย</button>
+                </form>
+                <ul id="expenseLogList" class="item-list" style="margin-top:10px;"></ul>
+            </div>
+
+            <div class="card">
+                <h3>📋 รายการประวัติบิลขายทั้งหมดของวันนี้</h3>
+                <ul id="billLogList" class="item-list"><div class="loading-text">กำลังโหลด...</div></ul>
+            </div>
+
+            <div class="card">
+                <h3>🐷 ตั้งราคากลาง (สำหรับลูกค้าทั่วไป)</h3>
+                <form id="porkForm" class="row" style="margin-bottom:10px;">
+                    <div class="col"><input type="text" id="porkName" class="form-control" placeholder="ชื่อชิ้นส่วน" required></div>
+                    <div class="col"><input type="number" id="porkPrice" class="form-control" placeholder="ราคากลาง" required></div>
+                    <button type="submit" class="btn btn-success" style="width:auto; padding:0 15px;">เพิ่ม</button>
+                </form>
+                <ul id="porkPriceList" class="item-list"></ul>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="nav-bar">
+        <button class="nav-item active" onclick="switchSection('sec-pos', this)"><span>🛒</span>ทำบิลขาย</button>
+        <button class="nav-item" onclick="switchSection('sec-vip', this)"><span>⭐</span>ราคาประจำ</button>
+        <button class="nav-item" onclick="switchSection('sec-debts', this)"><span>👥</span>คนติดหนี้</button>
+        <button class="nav-item" onclick="switchSection('sec-reports', this)"><span>📋</span>ประวัติ/บัญชี</button>
+    </div>
+
+    <script>
+        // 🛠️ วางคีย์เวิร์ดล็อกอินฐานข้อมูลออนไลน์ Supabase ตรงกล่องด้านล่างนี้
+        const SUPABASE_URL = "https://gnqptfyzgfzlgzdspacv.supabase.co"; 
+        const SUPABASE_KEY = "sb_publishable_0nubbf42J0e6m1BoPXSggA_IP_GvjyP";
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let porkPrices = JSON.parse(localStorage.getItem('pork_prices_v5')) || [
+            { id: "1", name: "หมูเนื้อแดง", price: 140 },
+            { id: "2", name: "หมูสามชั้น", price: 170 },
+            { id: "3", name: "ซี่โครงหมู", price: 150 }
+        ];
+        let vipCustomers = JSON.parse(localStorage.getItem('pork_vips_v5')) || [];
+        let bills = []; 
+        let expenses = [];
+        let currentBasket = [];
+
+        function switchSection(sectionId, btn) {
+            document.querySelectorAll('.app-section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+            document.getElementById(sectionId).classList.add('active');
+            btn.classList.add('active');
+            init();
+        }
+
+        window.filterCustomerSearch = function() {
+            const keyword = document.getElementById('customerSearchInput').value.trim().toLowerCase();
+            const select = document.getElementById('billCustomerSelect');
+            let html = '<option value="normal">👤 ลูกค้าทั่วไป (กรอกชื่อแมนนวล)</option>';
+            const filtered = vipCustomers.filter(v => v.name.toLowerCase().includes(keyword));
+            filtered.forEach(v => { html += `<option value="${v.id}">⭐ ลูกค้าประจำ: ${v.name}</option>`; });
+            select.innerHTML = html;
+            onCustomerSelectChange();
+        }
+
+        window.onPorkTypeSelectChange = function() {
+            const porkId = document.getElementById('billPorkType').value;
+            const customerId = document.getElementById('billCustomerSelect').value;
+            document.getElementById('billCustomPrice').value = getPorkPriceForCustomer(customerId, porkId);
+        }
+
+        window.onCustomerSelectChange = function() {
+            const customerId = document.getElementById('billCustomerSelect').value;
+            document.getElementById('manualNameContainer').style.display = (customerId === "normal") ? "block" : "none";
+            onPorkTypeSelectChange();
+            if(currentBasket.length > 0) {
+                currentBasket = currentBasket.map(item => {
+                    let newPrice = getPorkPriceForCustomer(customerId, item.porkId);
+                    return { ...item, priceUsed: newPrice, total: newPrice * item.weight };
+                });
+                renderBasket();
+            }
+        }
+
+        function getPorkPriceForCustomer(customerId, porkId) {
+            const porkObj = porkPrices.find(p => p.id === porkId);
+            if (!porkObj) return 0;
+            if (customerId === "normal") return porkObj.price;
+            const vip = vipCustomers.find(v => v.id === customerId);
+            if (vip && vip.customPrices && vip.customPrices[porkId] !== undefined) return vip.customPrices[porkId];
+            return porkObj.price;
+        }
+
+        window.addToBasket = function() {
+            const porkId = document.getElementById('billPorkType').value;
+            const customPrice = parseFloat(document.getElementById('billCustomPrice').value);
+            const weight = parseFloat(document.getElementById('billWeight').value);
+            if (!weight || weight <= 0 || isNaN(customPrice)) { alert('กรุณาระบุน้ำหนักและราคาให้ครบถ้วนครับ'); return; }
+            const selectedPork = porkPrices.find(p => p.id === porkId);
+            if (selectedPork) {
+                currentBasket.push({ porkId: selectedPork.id, porkName: selectedPork.name, priceUsed: customPrice, weight: weight, total: customPrice * weight });
+                document.getElementById('billWeight').value = '';
+                renderBasket();
+            }
+        }
+
+        window.removeFromBasket = function(index) { currentBasket.splice(index, 1); renderBasket(); }
+        window.updateBasketRowValues = function(index, newPrice, newWeight) {
+            if (isNaN(newPrice) || isNaN(newWeight) || newPrice < 0 || newWeight <= 0) return;
+            currentBasket[index].priceUsed = parseFloat(newPrice);
+            currentBasket[index].weight = parseFloat(newWeight);
+            currentBasket[index].total = currentBasket[index].priceUsed * currentBasket[index].weight;
+            renderBasket();
+        }
+
+        function renderBasket() {
+            const basketList = document.getElementById('basketList');
+            if (currentBasket.length === 0) {
+                basketList.innerHTML = '<li style="color:#aaa; justify-content:center;">ไม่มีสินค้าในบิลนี้</li>';
+                document.getElementById('billTotalText').innerText = '0.00';
+                return;
+            }
+            let basketTotal = 0;
+            basketList.innerHTML = currentBasket.map((item, index) => {
+                basketTotal += item.total;
+                return `
+                    <li style="flex-direction: column; align-items: flex-start; padding: 8px 0;">
+                        <div style="width: 100%; display: flex; justify-content: space-between; align-items: center;">
+                            <span><strong>🐷 ${item.porkName}</strong> -> ยอดรวม: <strong>${item.total.toLocaleString()} บ.</strong></span>
+                            <button type="button" class="btn-action-delete" style="padding:2px 6px;" onclick="removeFromBasket(${index})">ลบ</button>
+                        </div>
+                        <div class="edit-row-box" style="width:100%; display:flex; gap:5px;">
+                            <div style="flex:1;">ราคา/กก: <input type="number" value="${item.priceUsed}" style="width:100%; padding:2px;" oninput="updateBasketRowValues(${index}, this.value, ${item.weight})"></div>
+                            <div style="flex:1;">น้ำหนัก: <input type="number" value="${item.weight}" step="0.01" style="width:100%; padding:2px;" oninput="updateBasketRowValues(${index}, ${item.priceUsed}, this.value)"></div>
+                        </div>
+                    </li>
+                `;
+            }).join('');
+            document.getElementById('billTotalText').innerText = basketTotal.toLocaleString();
+        }
+
+        window.toggleDebtDetail = function(customerName) {
+            const element = document.getElementById(`debt-detail-${customerName}`);
+            element.style.display = (element.style.display === "block") ? "none" : "block";
+        }
+
+        // 📥 ฟังก์ชันซิงค์โหลดข้อมูลแบบเรียลไทม์จากเซิร์ฟเวอร์อินเทอร์เน็ต
+        async function init() {
+            localStorage.setItem('pork_prices_v5', JSON.stringify(porkPrices));
+            localStorage.setItem('pork_vips_v5', JSON.stringify(vipCustomers));
+
+            const selectedDate = document.getElementById('globalDateInput').value;
+            document.getElementById('billPorkType').innerHTML = porkPrices.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+
+            document.getElementById('vipPriceInputsContainer').innerHTML = porkPrices.map(p => `
+                <div class="row" style="margin-bottom:8px; align-items:center;">
+                    <div class="col" style="font-size:14px; font-weight:bold;">${p.name}</div>
+                    <div class="col"><input type="number" class="form-control vip-custom-rate-input" data-porkid="${p.id}" placeholder="ปกติคือ ${p.price}" required style="padding:6px 10px;"></div>
+                </div>
+            `).join('');
+
+            try {
+                // ดึงบิลออนไลน์จากระบบคลาวด์
+                const { data: dbBills, error: bErr } = await supabase.from('bills').select('*');
+                if (!bErr) bills = dbBills || [];
+
+                // ดึงรายจ่ายออนไลน์จากระบบคลาวด์
+                const { data: dbExpenses, error: eErr } = await supabase.from('expenses').select('*');
+                if (!eErr) expenses = dbExpenses || [];
+            } catch(err) {
+                console.log("เกิดข้อผิดพลาดในการโหลดข้อมูลออนไลน์");
+            }
+
+            // คำนวณรายรับรายจ่ายในวัน
+            let totalIncome = 0; let totalExpense = 0;
+            bills.forEach(b => { if (!b.isDebt && b.date === selectedDate) totalIncome += b.total; });
+            expenses.forEach(e => { if (e.date === selectedDate) totalExpense += e.amount; });
+            document.getElementById('dash-income').innerText = totalIncome.toLocaleString() + ' บ.';
+            document.getElementById('dash-expense').innerText = totalExpense.toLocaleString() + ' บ.';
+
+            // รายชื่อลูกค้าประจำ
+            document.getElementById('vipCustomerList').innerHTML = vipCustomers.map(v => {
+                let ratesSummary = "";
+                porkPrices.forEach(p => { ratesSummary += `<span style="display:inline-block; margin-right:10px; font-size:12px;">• ${p.name}: <strong>${v.customPrices[p.id] || p.price} บ.</strong></span>`; });
+                return `<li style="flex-direction:column; align-items:flex-start; gap:5px;"><div style="width:100%; display:flex; justify-content:between; align-items:center;"><strong>⭐ ${v.name}</strong><button class="btn-action-delete" onclick="deleteVipCustomer('${v.id}')">ลบ</button></div><div style="color:#57606f;">${ratesSummary}</div></li>`;
+            }).join('');
+
+            // ประวัติบิลออนไลน์แยกตามวัน
+            const filteredBills = bills.filter(b => b.date === selectedDate);
+            const billLogList = document.getElementById('billLogList');
+            if(filteredBills.length === 0) {
+                billLogList.innerHTML = `<li style="justify-content:center; color:#aaa;">ไม่มีประวัติบิลของวันที่ ${selectedDate}</li>`;
+            } else {
+                billLogList.innerHTML = filteredBills.map(b => {
+                    const summary = b.items.map(i => `${i.porkName} ${i.weight}กก.`).join(', ');
+                    return `
+                        <li>
+                            <div>
+                                <strong>👤 ${b.customer}</strong> <br>
+                                <small style="color:#718096;">📦 สินค้า: ${summary}</small> <br>
+                                <span class="badge ${b.isDebt ? 'badge-debt':'badge-paid'}">${b.isDebt ? '⚠️ ค้างจ่าย':'✅ จ่ายแล้ว'}</span>
+                            </div>
+                            <div class="action-container">
+                                <span style="font-weight:bold;">${b.total.toLocaleString()} บาท</span>
+                                <div class="btn-group">
+                                    <button class="btn-action-edit" onclick="editBill('${b.id}')">👁️ ดู/แก้</button>
+                                    <button class="btn-action-delete" onclick="deleteBill('${b.id}')">🗑️ ลบ</button>
+                                </div>
+                            </div>
+                        </li>
+                    `;
+                }).reverse().join('');
+            }
+
+            // เจาะลึกคนติดหนี้รวมสะสมออนไลน์
+            let customerDebts = {};
+            bills.forEach(b => {
+                if (b.isDebt) {
+                    if (!customerDebts[b.customer]) customerDebts[b.customer] = { total: 0, bills: [] };
+                    customerDebts[b.customer].total += b.total;
+                    customerDebts[b.customer].bills.push(b);
+                }
+            });
+
+            const debtLedgerList = document.getElementById('debtLedgerList');
+            const debtKeys = Object.keys(customerDebts);
+            if (debtKeys.length === 0) {
+                debtLedgerList.innerHTML = '<li style="justify-content:center; color:#aaa;">🎉 ปัจจุบันไม่มีหนี้สินค้างค้าง</li>';
+            } else {
+                debtLedgerList.innerHTML = debtKeys.map(name => {
+                    const subBillsHtml = customerDebts[name].bills.map(subBill => {
+                        const itemsTxt = subBill.items.map(i => `${i.porkName} ${i.weight}กก.`).join(', ');
+                        return `<div class="debt-detail-item">📅 วันที่ ${subBill.date} | ค้าง <strong>${subBill.total.toLocaleString()} บ.</strong> <br> <small>(${itemsTxt})</small></div>`;
+                    }).join('');
+
+                    return `
+                        <li style="flex-direction: column; align-items: flex-start; gap: 4px;">
+                            <div style="width: 100%; display: flex; justify-content: space-between; align-items: center;">
+                                <div onclick="toggleDebtDetail('${name}')" style="cursor:pointer; flex:1;">
+                                    <strong style="font-size:16px; color:#2b6cb0; text-decoration:underline;">👤 ${name} 📂</strong>
+                                    <br><span class="badge badge-debt" style="font-size:10px;">มีทั้งหมด ${customerDebts[name].bills.length} บิล (คลิกดู)</span>
+                                </div>
+                                <div class="action-container">
+                                    <span style="font-weight:bold; color:var(--danger); font-size:16px;">${customerDebts[name].total.toLocaleString()} บาท</span>
+                                    <button class="btn-clear-all" onclick="clearAllCustomerDebts('${name}')">💰 เคลียร์ทั้งหมด</button>
+                                </div>
+                            </div>
+                            <div class="debt-detail-box" id="debt-detail-${name}">${subBillsHtml}</div>
+                        </li>
+                    `;
+                }).join('');
+            }
+
+            // รายจ่ายประจำวัน
+            const filteredExpenses = expenses.filter(e => e.date === selectedDate);
+            document.getElementById('expenseLogList').innerHTML = filteredExpenses.length === 0 ? 
+                `<li style="justify-content:center; color:#aaa;">ไม่มีรายจ่ายของวันที่ ${selectedDate}</li>` :
+                filteredExpenses.map(e => `<li><span>${e.name}</span><span style="color:red; font-weight:bold;">-${e.amount} บ.</span><button class="btn-action-delete" onclick="deleteExpense('${e.id}')">ลบ</button></li>`).join('');
+            
+            document.getElementById('porkPriceList').innerHTML = porkPrices.map(p => `<li><span>${p.name} (${p.price} บ./กก.)</span><button class="btn-action-delete" onclick="deletePork('${p.id}')">ลบ</button></li>`).join('');
+            
+            if(document.getElementById('billCustomerSelect').options.length <= 1) filterCustomerSearch();
+            renderBasket();
+        }
+
+        window.resetPosForm = function() {
+            document.getElementById('editBillId').value = "";
+            currentBasket = [];
+            document.getElementById('billForm').reset();
+            document.getElementById('customerSearchInput').value = "";
+            filterCustomerSearch();
+            document.getElementById('formTitle').innerText = "🛒 ออกบิลขายหมูใบใหม่";
+            document.getElementById('submitBillBtn').innerText = "💾 บันทึกเปิดบิลขึ้นเซิร์ฟเวอร์";
+            document.getElementById('cancelEditBtn').style.display = "none";
+            init();
+        }
+
+        // ☁️ ฟังก์ชัน: เซฟบิลใหม่ หรือ แก้ไขบิลเก่าตรงเข้าคลาวด์ออนไลน์
+        document.getElementById('billForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const editId = document.getElementById('editBillId').value;
+            const customerSelect = document.getElementById('billCustomerSelect');
+            const manualName = document.getElementById('billCustomerManualName').value.trim();
+            const payStatus = document.querySelector('input[name="payStatus"]:checked').value;
+            const isDebt = (payStatus === 'debt');
+            const targetDate = document.getElementById('globalDateInput').value;
+
+            if (currentBasket.length === 0) { alert('โปรดเลือกสินค้าลงตะกร้าก่อนเซฟครับ'); return; }
+
+            let finalCustomerName = (customerSelect.value === "normal") ? (manualName ? manualName : "ลูกค้าทั่วไป") : vipCustomers.find(v => v.id === customerSelect.value).name;
+            let billTotal = 0; currentBasket.forEach(item => billTotal += item.total);
+
+            const billData = { customer: finalCustomerName, items: currentBasket, total: billTotal, isDebt: isDebt, date: targetDate };
+
+            if (editId) {
+                // อัปเดตออนไลน์แทนที่เดิม
+                await supabase.from('bills').update(billData).eq('id', editId);
+            } else {
+                // บันทึกบิลใบใหม่ส่งขึ้นระบบ
+                await supabase.from('bills').insert([billData]);
+            }
+            resetPosForm();
+        });
+
+        window.editBill = function(id) {
+            const bill = bills.find(b => b.id == id);
+            if (bill) {
+                switchSection('sec-pos', document.querySelectorAll('.nav-item')[0]);
+                document.getElementById('editBillId').value = bill.id;
+                document.getElementById('globalDateInput').value = bill.date;
+                
+                const matchedVip = vipCustomers.find(v => v.name === bill.customer);
+                if (matchedVip) {
+                    document.getElementById('customerSearchInput').value = matchedVip.name;
+                    filterCustomerSearch();
+                    document.getElementById('billCustomerSelect').value = matchedVip.id;
+                    document.getElementById('manualNameContainer').style.display = "none";
+                } else {
+                    document.getElementById('billCustomerSelect').value = "normal";
+                    document.getElementById('manualNameContainer').style.display = "block";
+                    document.getElementById('billCustomerManualName').value = bill.customer;
+                }
+
+                if (bill.isDebt) document.getElementById('pay-debt').checked = true;
+                else document.getElementById('pay-paid').checked = true;
+
+                currentBasket = JSON.parse(JSON.stringify(bill.items));
+                document.getElementById('formTitle').innerText = "⚠️ กำลังแก้ไขบิลของ: " + bill.customer;
+                document.getElementById('submitBillBtn').innerText = "🔄 บันทึกการเปลี่ยนแปลงบิล";
+                document.getElementById('cancelEditBtn').style.display = "block";
+                renderBasket();
+            }
+        }
+
+        // ☁️ ฟังก์ชัน: บันทึกรายจ่ายส่งตรงขึ้นคลาวด์ออนไลน์
+        document.getElementById('expenseForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const targetDate = document.getElementById('globalDateInput').value;
+            await supabase.from('expenses').insert([{
+                name: document.getElementById('expName').value,
+                amount: parseFloat(document.getElementById('expAmount').value),
+                date: targetDate
+            }]);
+            this.reset(); alert('💸 บันทึกรายจ่ายออนไลน์สำเร็จ!'); init();
+        });
+
+        window.clearAllCustomerDebts = async function(name) {
+            if (confirm(`เคลียร์หนี้สะสมทุกบิลออนไลน์ของคุณ ${name} ครบแล้วใช่ไหม?`)) {
+                const targetBills = bills.filter(b => b.customer === name && b.isDebt);
+                for(let b of targetBills) {
+                    await supabase.from('bills').update({ isDebt: false }).eq('id', b.id);
+                }
+                init();
+            }
+        }
+
+        window.deleteBill = async function(id) { if(confirm('ต้องการลบบิลนี้จากคลาวด์ถาวร?')) { await supabase.from('bills').delete().eq('id', id); init(); } }
+        window.deleteExpense = async function(id) { if(confirm('ต้องการลบรายจ่ายนี้จากคลาวด์ถาวร?')) { await supabase.from('expenses').delete().eq('id', id); init(); } }
+        window.deleteVipCustomer = function(id) { if(confirm('ลบลูกค้าประจำคนนี้?')) { vipCustomers = vipCustomers.filter(v => v.id !== id); init(); } }
+        window.deletePork = function(id) { if(confirm('ลบประเภทหมูนี้?')) { porkPrices = porkPrices.filter(p => p.id !== id); init(); } }
+        document.getElementById('porkForm').addEventListener('submit', function(e) { e.preventDefault(); porkPrices.push({ id: Date.now().toString(), name: document.getElementById('porkName').value, price: parseFloat(document.getElementById('porkPrice').value) }); this.reset(); init(); });
+        
+        document.getElementById('vipCustomerForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            let customPrices = {};
+            document.querySelectorAll('.vip-custom-rate-input').forEach(input => { customPrices[input.getAttribute('data-porkid')] = parseFloat(input.value); });
+            vipCustomers.push({ id: "v" + Date.now().toString(), name: document.getElementById('vipCustName').value.trim(), customPrices: customPrices });
+            this.reset(); alert('⭐ บันทึกล็อกราคาสำเร็จ!'); init();
+        });
+
+        init();
+    </script>
+</body>
+</html>
